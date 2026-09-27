@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACC File Search</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0d1f38 0%, #1a3a60 100%);
+      color: #fff;
+      padding: 18px 0;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.35);
+    }
+    .header .container { display: flex; align-items: center; gap: 14px; }
+    .header-icon {
+      width: 46px; height: 46px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-title h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-title p  { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+    .demo-pill {
+      margin-left: auto;
+      background: rgba(251,191,36,0.18); color: #fcd34d;
+      border: 1px solid rgba(251,191,36,0.4);
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── Main ── */
+    .main { padding: 28px 0 64px; }
+    .stack { display: flex; flex-direction: column; gap: 18px; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .card-title { display: flex; align-items: center; gap: 10px; }
+    .card-title h2 { font-size: 16px; font-weight: 600; }
+    .step-badge {
+      width: 26px; height: 26px;
+      background: #dbeafe; color: #1d4ed8;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .step-badge.done { background: #dcfce7; color: #15803d; }
+    .card-body { padding: 22px 24px; }
+
+    /* ── Forms ── */
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+
+    input[type="text"], select {
+      height: 40px; padding: 0 12px;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 14px; color: #1e293b; background: #f8fafc;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      outline: none; width: 100%; font-family: inherit;
+    }
+    input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); background: #fff; }
+    input::placeholder { color: #94a3b8; font-size: 13px; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: #1d4ed8; cursor: pointer; vertical-align: middle; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 0 18px; height: 40px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+      font-family: inherit; white-space: nowrap;
+    }
+    .btn-primary { background: #1d4ed8; color: #fff; }
+    .btn-primary:hover { background: #1e40af; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-success { background: #15803d; color: #fff; }
+    .btn-success:hover { background: #166534; }
+    .btn-success:disabled { background: #86efac; cursor: not-allowed; }
+    .btn-ghost { background: #f1f5f9; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
+    .btn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Search row ── */
+    .search-row { display: flex; gap: 12px; align-items: flex-end; }
+    .search-row .form-group { flex: 1; }
+    .sample-codes { font-size: 12px; color: #64748b; margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .code-chip {
+      background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+      padding: 2px 9px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .code-chip:hover { background: #dbeafe; }
+
+    /* ── Messages ── */
+    .msg {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; margin-top: 14px; line-height: 1.45;
+    }
+    .msg svg { flex-shrink: 0; margin-top: 1px; }
+    .msg.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .msg.error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .msg.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: 4px;
+      background: #fff; border-radius: 12px; padding: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.04);
+    }
+    .tab {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      height: 42px; border: none; border-radius: 8px; background: transparent;
+      font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .tab:hover { background: #f1f5f9; color: #1e293b; }
+    .tab.active { background: #1d4ed8; color: #fff; }
+    .tab-count {
+      min-width: 22px; height: 20px; padding: 0 7px;
+      border-radius: 10px; font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e2e8f0; color: #475569;
+    }
+    .tab.active .tab-count { background: rgba(255,255,255,0.22); color: #fff; }
+    .tab-count.has { background: #dcfce7; color: #15803d; }
+
+    /* ── Loading ── */
+    .loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; padding: 64px; color: #64748b;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e2e8f0; border-top-color: #3b82f6;
+      border-radius: 50%; animation: spin 0.75s linear infinite;
+    }
+    .loading-text { font-size: 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results header ── */
+    .results-header { font-size: 13px; color: #64748b; padding: 0 2px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .results-header strong { color: #1e293b; }
+    .results-header .btn-row { margin-left: auto; }
+
+    /* ── Project card ── */
+    .project-card {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.04);
+      overflow: hidden; margin-bottom: 14px;
+    }
+    .project-header {
+      padding: 16px 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; transition: background 0.1s;
+    }
+    .project-header:hover { background: #f8fafc; }
+    .project-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .project-icon {
+      width: 38px; height: 38px; background: #dbeafe;
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .project-name { font-size: 15px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .project-meta { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .project-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .count-badge {
+      background: #f1f5f9; color: #475569;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .count-badge.sel { background: #dcfce7; color: #15803d; }
+    .chevron { color: #94a3b8; transition: transform 0.2s; flex-shrink: 0; }
+    .chevron.open { transform: rotate(180deg); }
+
+    /* ── Table toolbar ── */
+    .table-toolbar {
+      padding: 10px 22px; border-top: 1px solid #f1f5f9;
+      display: flex; align-items: center; gap: 10px; background: #fafafa;
+    }
+    .filter-wrapper { position: relative; }
+    .filter-icon {
+      position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8; pointer-events: none;
+    }
+    .filter-input {
+      height: 32px !important; padding: 0 10px 0 30px !important;
+      border-radius: 6px !important; font-size: 13px !important;
+      background: #fff !important; width: 260px !important;
+    }
+    .table-count { font-size: 12px; color: #64748b; margin-left: auto; }
+
+    /* ── File table ── */
+    .table-wrapper { overflow-x: auto; border-top: 1px solid #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+    th {
+      padding: 10px 16px; text-align: left;
+      font-size: 11px; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+      cursor: pointer; user-select: none; transition: color 0.1s;
+    }
+    th.chk-col { width: 44px; cursor: default; padding-right: 0; }
+    th:hover { color: #1e293b; }
+    th.sorted { color: #1d4ed8; }
+    .sort-icon { margin-left: 3px; opacity: 0.5; font-style: normal; }
+    th.sorted .sort-icon { opacity: 1; }
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    td.chk-col { padding-right: 0; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr.selected { background: #eff6ff; }
+    tbody tr.selected:hover { background: #dbeafe; }
+
+    /* ── Cells ── */
+    .fname-cell { display: flex; align-items: center; gap: 8px; }
+    .ext-badge {
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0; letter-spacing: 0.3px;
+    }
+    .fname-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+    .path-cell  { color: #64748b; font-size: 12px; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+    .size-cell  { color: #64748b; white-space: nowrap; }
+    .date-cell  { color: #64748b; white-space: nowrap; font-size: 12px; }
+    .user-cell  { color: #475569; white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+
+    /* ── Empty states ── */
+    .empty-state { padding: 48px; text-align: center; color: #94a3b8; }
+    .empty-state h3 { font-size: 15px; color: #64748b; margin: 14px 0 6px; }
+    .empty-state p  { font-size: 13px; }
+
+    /* ── Push panel ── */
+    .push-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+    .sel-list { list-style: none; max-height: 420px; overflow-y: auto; }
+    .sel-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 24px; border-bottom: 1px solid #f1f5f9; font-size: 13px;
+    }
+    .sel-item:last-child { border-bottom: none; }
+    .sel-main { min-width: 0; flex: 1; }
+    .sel-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+    .sel-src  { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .sel-status { font-size: 11px; font-weight: 600; color: #94a3b8; white-space: nowrap; min-width: 70px; text-align: right; }
+    .sel-status.up   { color: #1d4ed8; }
+    .sel-status.ok   { color: #15803d; }
+    .remove-btn {
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      display: flex; padding: 4px; border-radius: 4px;
+    }
+    .remove-btn:hover { color: #dc2626; background: #fef2f2; }
+    .progress { height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; margin-top: 6px; }
+    .progress > div { height: 100%; width: 0; background: #3b82f6; transition: width 0.2s; }
+    .progress.ok > div { background: #22c55e; }
+
+    .dest-fields { display: flex; flex-direction: column; gap: 14px; }
+    .dest-path {
+      background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;
+      padding: 12px 14px; font-size: 13px; color: #334155; line-height: 1.6;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    }
+    .dest-path .crumb { background: #fff; border: 1px solid #e2e8f0; border-radius: 5px; padding: 1px 8px; font-weight: 500; }
+    .dest-path .crumb.acc { background: #0d1f38; color: #fff; border-color: #0d1f38; }
+    .dest-path .sep { color: #94a3b8; }
+    .opt-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
+    .opt-row label { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 13px; color: #475569; cursor: pointer; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; padding: 10px 0; border-top: 1px solid #f1f5f9; }
+    .summary-row strong { color: #1e293b; }
+
+    .footer-note { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 8px; }
+
+    @media (max-width: 900px) {
+      .push-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 0 16px; }
+      .search-row { flex-direction: column; align-items: stretch; }
+      .search-row .btn { justify-content: center; }
+      .filter-input { width: 100% !important; }
+      .filter-wrapper { flex: 1; }
+      .demo-pill { display: none; }
+      .card-body { padding: 18px 16px; }
+      .sel-item { padding: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+        <circle cx="11.5" cy="13.5" r="2.5"/>
+        <line x1="13.3" y1="15.3" x2="15.5" y2="17.5"/>
+      </svg>
+    </div>
+    <div class="header-title">
+      <h1>ACC File Search</h1>
+    </div>
+    <span class="demo-pill">Demo · Sample Data</span>
+  </div>
+</header>
+
+<main class="main">
+  <div class="container">
+    <div class="stack">
+
+      <!-- Search -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="step-badge">1</div>
+            <h2>Search Projects by Site Code</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+            Any project whose name contains the site code will be shown with all its files from the <strong>Project Files</strong> folder.
+            Tick the files you need, then open the <strong>Push to ACC</strong> tab to send them to a destination folder.
+          </p>
+          <div class="search-row">
+            <div class="form-group">
+              <label for="siteCode">Site Code</label>
+              <input type="text" id="siteCode" value="LON-001" placeholder="e.g. LON-001, MAN-014…" onkeydown="if(event.key==='Enter') doSearch()">
+            </div>
+            <button class="btn btn-primary" id="searchBtn" onclick="doSearch()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Search
+            </button>
+          </div>
+          <div class="sample-codes">
+            Sample site codes:
+            <button class="code-chip" onclick="quickSearch('LON-001')">LON-001</button>
+            <button class="code-chip" onclick="quickSearch('MAN-014')">MAN-014</button>
+            <button class="code-chip" onclick="quickSearch('BHX-207')">BHX-207</button>
+          </div>
+          <div id="searchMsg"></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist">
+        <button class="tab active" id="tab-files" role="tab" onclick="showTab('files')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/>
+          </svg>
+          Files
+        </button>
+        <button class="tab" id="tab-push" role="tab" onclick="showTab('push')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+          </svg>
+          Push to ACC
+          <span class="tab-count" id="selCount">0</span>
+        </button>
+      </div>
+
+      <!-- Files panel -->
+      <div id="panel-files">
+        <div id="resultsSection"></div>
+      </div>
+
+      <!-- Push panel -->
+      <div id="panel-push" style="display:none;">
+        <div class="push-grid">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="step-badge" id="selBadge">2</div>
+                <h2>Selected Files</h2>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="clearSelBtn" onclick="clearSelection()">Clear all</button>
+            </div>
+            <div id="selList"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="step-badge" id="destBadge">3</div>
+                <h2>Destination on ACC</h2>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="dest-fields">
+                <div class="form-group">
+                  <label for="destProject">Target Project</label>
+                  <select id="destProject" onchange="renderDestPath()"></select>
+                </div>
+                <div class="form-group">
+                  <label for="destFolder">Target Folder</label>
+                  <select id="destFolder" onchange="renderDestPath()"></select>
+                </div>
+                <div class="form-group">
+                  <label for="destSub">New Subfolder (optional)</label>
+                  <input type="text" id="destSub" placeholder="e.g. 2026-09 Transmittal" oninput="renderDestPath()">
+                </div>
+                <div class="opt-row">
+                  <input type="checkbox" id="optVersion" checked>
+                  <label for="optVersion">Upload as new version if file already exists</label>
+                </div>
+                <div class="form-group">
+                  <label>Push Location</label>
+                  <div class="dest-path" id="destPath"></div>
+                </div>
+                <div>
+                  <div class="summary-row"><span>Files</span><strong id="sumFiles">0</strong></div>
+                  <div class="summary-row"><span>Total size</span><strong id="sumSize">—</strong></div>
+                </div>
+                <button class="btn btn-success" id="pushBtn" onclick="doPush()" style="justify-content:center;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                    <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+                  </svg>
+                  Push Selected Files
+                </button>
+                <div id="pushMsg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="footer-note">Demonstration build — all projects, files and users shown are sample data. No live connection is made.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Sample data ────────────────────────────────────────────────────────
+const USERS = ['Sarah Mitchell', 'James Okafor', 'Priya Sharma', 'Tom Hughes', 'Elena Rossi', 'David Chen'];
+
+const TARGET_FOLDERS = [
+  'Project Files',
+  'Project Files/01 - Design',
+  'Project Files/02 - Drawings',
+  'Project Files/03 - Specifications',
+  'Project Files/04 - Submittals',
+  'Project Files/05 - Issued for Construction',
+  'Project Files/06 - As-Built',
+  'Project Files/07 - Handover & O&M'
+];
+
+function f(id, name, path, size, date, mod, cre) {
+  const ext = name.includes('.') ? name.split('.').pop().toUpperCase() : '';
+  return { id, name, extension: ext, path, size, lastModified: date, lastModifiedBy: USERS[mod], createdBy: USERS[cre] };
+}
+
+const PROJECTS = [
+  {
+    name: 'LON-001 – Canary Wharf Data Centre',
+    files: [
+      f('a1', 'LON-001-ARC-GA-L00-001.dwg', 'Project Files/02 - Drawings/Architectural', 4823040, '2026-09-18T10:24:00Z', 0, 0),
+      f('a2', 'LON-001-ARC-GA-L01-002.dwg', 'Project Files/02 - Drawings/Architectural', 5120512, '2026-09-18T10:31:00Z', 0, 0),
+      f('a3', 'LON-001-ELE-SLD-001 Rev C.pdf', 'Project Files/02 - Drawings/Electrical', 1843200, '2026-09-22T14:02:00Z', 1, 1),
+      f('a4', 'LON-001-MEP-Coordinated.rvt', 'Project Files/01 - Design/Models', 187695104, '2026-09-24T08:47:00Z', 2, 2),
+      f('a5', 'LON-001-MEP-Clash-Report.nwd', 'Project Files/01 - Design/Coordination', 64880640, '2026-09-24T16:15:00Z', 2, 3),
+      f('a6', 'IDF Room Layout – Level 1.pdf', 'Project Files/02 - Drawings/Comms', 942080, '2026-09-10T11:20:00Z', 3, 3),
+      f('a7', 'Structured Cabling Specification.docx', 'Project Files/03 - Specifications', 358400, '2026-08-29T09:05:00Z', 4, 1),
+      f('a8', 'Cable Schedule – Data Hall A.xlsx', 'Project Files/04 - Submittals', 211968, '2026-09-25T13:40:00Z', 1, 4),
+      f('a9', 'Wireless AP Survey Results.pdf', 'Project Files/04 - Submittals', 3276800, '2026-09-19T15:55:00Z', 3, 3),
+      f('a10','Site Photos – Week 38.zip', 'Project Files/06 - As-Built/Photos', 248512512, '2026-09-20T17:30:00Z', 5, 5),
+      f('a11','Programme Rev 7.mpp', 'Project Files/01 - Design/Programme', 1048576, '2026-09-15T07:50:00Z', 4, 4),
+      f('a12','QA-QC Inspection Checklist.xlsx', 'Project Files/07 - Handover & O&M', 98304, '2026-09-26T12:12:00Z', 0, 2)
+    ]
+  },
+  {
+    name: 'LON-001 – Phase 2 Office Fit-out',
+    files: [
+      f('b1', 'LON-001-P2-FitOut-Plan-L03.dwg', 'Project Files/02 - Drawings', 3670016, '2026-09-12T09:18:00Z', 0, 0),
+      f('b2', 'LON-001-P2-Lighting-Layout.pdf', 'Project Files/02 - Drawings/Electrical', 2202009, '2026-09-16T10:45:00Z', 1, 1),
+      f('b3', 'LON-001-P2-Structural.ifc', 'Project Files/01 - Design/Models', 45088768, '2026-09-08T14:30:00Z', 5, 5),
+      f('b4', 'Door Hardware Schedule.xlsx', 'Project Files/03 - Specifications', 145408, '2026-09-21T16:05:00Z', 4, 4),
+      f('b5', 'Fire Alarm Cause & Effect.pdf', 'Project Files/04 - Submittals', 612352, '2026-09-23T11:11:00Z', 2, 1),
+      f('b6', 'Design Review Presentation.pptx', 'Project Files/01 - Design', 8912896, '2026-09-05T15:00:00Z', 3, 3)
+    ]
+  },
+  {
+    name: 'MAN-014 – Salford Logistics Hub',
+    files: [
+      f('c1', 'MAN-014-SITE-Plan.dwg', 'Project Files/02 - Drawings', 6291456, '2026-09-02T08:00:00Z', 5, 5),
+      f('c2', 'MAN-014-Warehouse-Model.rvt', 'Project Files/01 - Design/Models', 142606336, '2026-09-17T12:40:00Z', 2, 2),
+      f('c3', 'Racking Layout Rev B.pdf', 'Project Files/05 - Issued for Construction', 1572864, '2026-09-19T09:30:00Z', 0, 0),
+      f('c4', 'Loading Bay Details.dxf', 'Project Files/02 - Drawings/Details', 921600, '2026-09-11T13:20:00Z', 3, 0),
+      f('c5', 'Access Control Matrix.csv', 'Project Files/04 - Submittals', 24576, '2026-09-24T10:10:00Z', 1, 1),
+      f('c6', 'Commissioning Plan.docx', 'Project Files/07 - Handover & O&M', 487424, '2026-09-25T16:48:00Z', 4, 4),
+      f('c7', 'Drone Flyover.mp4', 'Project Files/06 - As-Built/Media', 318767104, '2026-09-26T07:15:00Z', 5, 5)
+    ]
+  },
+  {
+    name: 'BHX-207 – Birmingham Hospital Wing',
+    files: [
+      f('d1', 'BHX-207-Ward-Layout-L02.pdf', 'Project Files/02 - Drawings', 2936012, '2026-09-14T09:00:00Z', 0, 0),
+      f('d2', 'BHX-207-Medical-Gas-Schematic.dwg', 'Project Files/02 - Drawings/Mechanical', 2097152, '2026-09-20T11:35:00Z', 2, 2),
+      f('d3', 'BHX-207-Federated.nwc', 'Project Files/01 - Design/Coordination', 91226112, '2026-09-22T15:25:00Z', 2, 3),
+      f('d4', 'Nurse Call System Spec.docx', 'Project Files/03 - Specifications', 276480, '2026-09-03T10:50:00Z', 4, 4),
+      f('d5', 'Infection Control Plan.pdf', 'Project Files/07 - Handover & O&M', 1153434, '2026-09-26T14:00:00Z', 1, 1)
+    ]
+  }
+];
+
+// ── State ──────────────────────────────────────────────────────────────
+const sortState = {};
+const selected = new Map();   // file id -> { file, project }
+let currentResults = [];
+let pushing = false;
+
+// ── Search ─────────────────────────────────────────────────────────────
+function quickSearch(code) {
+  document.getElementById('siteCode').value = code;
+  doSearch();
+}
+
+function doSearch() {
+  const siteCode = document.getElementById('siteCode').value.trim();
+  if (!siteCode) {
+    showMsg('searchMsg', 'error', 'Please enter a site code.');
+    return;
+  }
+
+  showTab('files');
+  document.getElementById('searchMsg').innerHTML = '';
+  document.getElementById('searchBtn').disabled  = true;
+  document.getElementById('resultsSection').innerHTML = `
+    <div class="card">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Searching sample projects…</div>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    const q = siteCode.toLowerCase();
+    currentResults = PROJECTS.filter(p => p.name.toLowerCase().includes(q));
+    renderResults(currentResults, siteCode);
+    document.getElementById('searchBtn').disabled = false;
+  }, 450);
+}
+
+// ── Render results ─────────────────────────────────────────────────────
+function renderResults(results, siteCode) {
+  const section = document.getElementById('resultsSection');
+
+  if (results.length === 0) {
+    section.innerHTML = `
+      <div class="card">
+        <div class="empty-state">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <h3>No matching projects found</h3>
+          <p>No sample projects contain &ldquo;<strong>${esc(siteCode)}</strong>&rdquo; in their name. Try LON-001, MAN-014 or BHX-207.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const totalFiles = results.reduce((s, r) => s + r.files.length, 0);
+  let html = `
+    <div class="results-header">
+      <span>
+        Found <strong>${results.length}</strong> project${results.length !== 1 ? 's' : ''}
+        matching &ldquo;<strong>${esc(siteCode)}</strong>&rdquo;
+        &mdash; <strong>${totalFiles.toLocaleString()}</strong> total file${totalFiles !== 1 ? 's' : ''}
+      </span>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" onclick="showTab('push')">
+          Push selected (<span class="sel-inline">${selected.size}</span>) →
+        </button>
+      </div>
+    </div>`;
+
+  results.forEach((proj, i) => { html += buildProjectCard(proj, i); });
+  section.innerHTML = html;
+  refreshSelectionUI();
+}
+
+function buildProjectCard(proj, i) {
+  const count = proj.files.length;
+  return `
+    <div class="project-card">
+      <div class="project-header" onclick="toggleProject(${i})">
+        <div class="project-info">
+          <div class="project-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div style="min-width:0;">
+            <div class="project-name" title="${esc(proj.name)}">${esc(proj.name)}</div>
+            <div class="project-meta">${count.toLocaleString()} file${count !== 1 ? 's' : ''} in Project Files</div>
+          </div>
+        </div>
+        <div class="project-right">
+          <span class="count-badge sel" id="psel-${i}" style="display:none;"></span>
+          <span class="count-badge">${count.toLocaleString()} files</span>
+          <svg class="chevron open" id="chev-${i}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+      <div id="pb-${i}">${buildFileTable(proj.files, i)}</div>
+    </div>`;
+}
+
+function buildFileTable(files, projIdx) {
+  const rows = files.map(file => buildRow(file, projIdx)).join('');
+  return `
+    <div class="table-toolbar">
+      <div class="filter-wrapper">
+        <svg class="filter-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="filter-input" type="text" placeholder="Filter files…"
+          oninput="filterTable('ft-${projIdx}', this.value, ${projIdx})">
+      </div>
+      <span class="table-count" id="tc-${projIdx}">${files.length.toLocaleString()} files</span>
+    </div>
+    <div class="table-wrapper">
+      <table id="ft-${projIdx}">
+        <thead>
+          <tr>
+            <th class="chk-col"><input type="checkbox" id="all-${projIdx}" title="Select all visible" onclick="toggleAll(${projIdx}, this.checked)"></th>
+            <th onclick="sortTable('ft-${projIdx}',1)">File Name <i class="sort-icon">↕</i></th>
+            <th onclick="sortTable('ft-${projIdx}',2)">Folder Path <i class="sort-icon">↕</i></th>
+            <th onclick="sortTable('ft-${projIdx}',3)">Size <i class="sort-icon">↕</i></th>
+            <th onclick="sortTable('ft-${projIdx}',4)">Last Modified <i class="sort-icon">↕</i></th>
+            <th onclick="sortTable('ft-${projIdx}',5)">Modified By <i class="sort-icon">↕</i></th>
+            <th onclick="sortTable('ft-${projIdx}',6)">Created By <i class="sort-icon">↕</i></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function buildRow(file, projIdx) {
+  const c = extColor(file.extension);
+  const badge = file.extension
+    ? `<span class="ext-badge" style="background:${c.bg};color:${c.fg}">${esc(file.extension)}</span>`
+    : '';
+  return `
+    <tr data-id="${file.id}" data-proj="${projIdx}" onclick="rowClick(event, this)">
+      <td class="chk-col"><input type="checkbox" class="row-chk" onclick="event.stopPropagation(); setSelected('${file.id}', ${projIdx}, this.checked)"></td>
+      <td><div class="fname-cell">${badge}<span class="fname-text" title="${esc(file.name)}">${esc(file.name)}</span></div></td>
+      <td class="path-cell" title="${esc(file.path)}">${esc(file.path)}</td>
+      <td class="size-cell" data-v="${file.size || 0}">${fmtSize(file.size)}</td>
+      <td class="date-cell" data-v="${file.lastModified || ''}">${fmtDate(file.lastModified)}</td>
+      <td class="user-cell" title="${esc(file.lastModifiedBy)}">${esc(file.lastModifiedBy) || '—'}</td>
+      <td class="user-cell" title="${esc(file.createdBy)}">${esc(file.createdBy) || '—'}</td>
+    </tr>`;
+}
+
+// ── Selection ──────────────────────────────────────────────────────────
+function rowClick(e, tr) {
+  const id = tr.dataset.id;
+  setSelected(id, +tr.dataset.proj, !selected.has(id));
+}
+
+function setSelected(id, projIdx, on) {
+  if (pushing) { refreshSelectionUI(); return; }
+  const proj = currentResults[projIdx];
+  const file = proj?.files.find(x => x.id === id);
+  if (!file) return;
+  if (on) selected.set(id, { file, project: proj.name });
+  else    selected.delete(id);
+  refreshSelectionUI();
+}
+
+function toggleAll(projIdx, on) {
+  const table = document.getElementById(`ft-${projIdx}`);
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    if (tr.style.display === 'none') return;
+    const id = tr.dataset.id;
+    const proj = currentResults[projIdx];
+    const file = proj.files.find(x => x.id === id);
+    if (on) selected.set(id, { file, project: proj.name });
+    else    selected.delete(id);
+  });
+  refreshSelectionUI();
+}
+
+function clearSelection() {
+  if (pushing) return;
+  selected.clear();
+  document.getElementById('pushMsg').innerHTML = '';
+  refreshSelectionUI();
+}
+
+function refreshSelectionUI() {
+  // Rows & header checkboxes in the Files tab
+  currentResults.forEach((proj, i) => {
+    const table = document.getElementById(`ft-${i}`);
+    if (!table) return;
+    let visible = 0, visSel = 0, projSel = 0;
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      const on = selected.has(tr.dataset.id);
+      tr.classList.toggle('selected', on);
+      tr.querySelector('.row-chk').checked = on;
+      if (on) projSel++;
+      if (tr.style.display !== 'none') { visible++; if (on) visSel++; }
+    });
+    const all = document.getElementById(`all-${i}`);
+    all.checked = visible > 0 && visSel === visible;
+    all.indeterminate = visSel > 0 && visSel < visible;
+    const pb = document.getElementById(`psel-${i}`);
+    pb.style.display = projSel ? '' : 'none';
+    pb.textContent = `${projSel} selected`;
+  });
+
+  const n = selected.size;
+  const cnt = document.getElementById('selCount');
+  cnt.textContent = n;
+  cnt.classList.toggle('has', n > 0);
+  document.querySelectorAll('.sel-inline').forEach(el => el.textContent = n);
+
+  if (!pushing) renderSelList();
+}
+
+// ── Push tab ───────────────────────────────────────────────────────────
+function showTab(name) {
+  document.getElementById('tab-files').classList.toggle('active', name === 'files');
+  document.getElementById('tab-push').classList.toggle('active', name === 'push');
+  document.getElementById('panel-files').style.display = name === 'files' ? '' : 'none';
+  document.getElementById('panel-push').style.display  = name === 'push'  ? '' : 'none';
+  if (name === 'push') renderDestPath();
+}
+
+function renderSelList() {
+  const list = document.getElementById('selList');
+  const items = [...selected.values()];
+  const totalSize = items.reduce((s, x) => s + (x.file.size || 0), 0);
+
+  document.getElementById('sumFiles').textContent = items.length;
+  document.getElementById('sumSize').textContent  = items.length ? fmtSize(totalSize) : '—';
+  document.getElementById('pushBtn').disabled     = pushing || items.length === 0;
+  document.getElementById('clearSelBtn').style.display = items.length && !pushing ? '' : 'none';
+
+  const badge = document.getElementById('selBadge');
+  badge.textContent = items.length ? '✓' : '2';
+  badge.className   = 'step-badge' + (items.length ? ' done' : '');
+
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="empty-state" style="padding:40px 24px;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        <h3>No files selected</h3>
+        <p>Go to the <strong>Files</strong> tab and tick the files you want to push.</p>
+        <button class="btn btn-ghost btn-sm" style="margin-top:14px;" onclick="showTab('files')">← Back to Files</button>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `<ul class="sel-list">${items.map(({ file, project }) => {
+    const c = extColor(file.extension);
+    return `
+      <li class="sel-item" id="si-${file.id}">
+        <span class="ext-badge" style="background:${c.bg};color:${c.fg}">${esc(file.extension)}</span>
+        <div class="sel-main">
+          <div class="sel-name" title="${esc(file.name)}">${esc(file.name)}</div>
+          <div class="sel-src" title="${esc(project)} / ${esc(file.path)}">${esc(project)} &rsaquo; ${esc(file.path)}</div>
+          <div class="progress" id="pg-${file.id}" style="display:none;"><div></div></div>
+        </div>
+        <span class="sel-status" id="st-${file.id}">${fmtSize(file.size)}</span>
+        ${pushing ? '' : `<button class="remove-btn" title="Remove" onclick="setSelectedById('${file.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`}
+      </li>`;
+  }).join('')}</ul>`;
+}
+
+function setSelectedById(id) {
+  selected.delete(id);
+  refreshSelectionUI();
+}
+
+function populateDestinations() {
+  document.getElementById('destProject').innerHTML =
+    PROJECTS.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('');
+  document.getElementById('destFolder').innerHTML =
+    TARGET_FOLDERS.map(p => `<option value="${esc(p)}"${p.includes('05 -') ? ' selected' : ''}>${esc(p)}</option>`).join('');
+}
+
+function destParts() {
+  const proj = PROJECTS[+document.getElementById('destProject').value].name;
+  const folder = document.getElementById('destFolder').value.split('/');
+  const sub = document.getElementById('destSub').value.trim();
+  return { proj, folder, sub };
+}
+
+function renderDestPath() {
+  const { proj, folder, sub } = destParts();
+  const crumbs = ['<span class="crumb acc">ACC</span>', `<span class="crumb">${esc(proj)}</span>`]
+    .concat(folder.map(x => `<span class="crumb">${esc(x)}</span>`));
+  if (sub) crumbs.push(`<span class="crumb" style="border-style:dashed;">${esc(sub)} <em style="color:#15803d;font-style:normal;font-size:11px;">new</em></span>`);
+  document.getElementById('destPath').innerHTML = crumbs.join('<span class="sep">›</span>');
+}
+
+async function doPush() {
+  if (pushing || selected.size === 0) return;
+  const { proj, folder, sub } = destParts();
+  const target = [proj, ...folder, ...(sub ? [sub] : [])].join(' / ');
+
+  pushing = true;
+  ['destProject', 'destFolder', 'destSub', 'optVersion'].forEach(id => document.getElementById(id).disabled = true);
+  document.getElementById('pushMsg').innerHTML = '';
+  renderSelList();
+  showMsg('pushMsg', 'info', `Pushing ${selected.size} file${selected.size !== 1 ? 's' : ''} to ${target}…`);
+
+  const items = [...selected.values()];
+  for (const { file } of items) {
+    const pg = document.getElementById(`pg-${file.id}`);
+    const st = document.getElementById(`st-${file.id}`);
+    pg.style.display = '';
+    st.className = 'sel-status up';
+    const steps = 8 + Math.min(12, Math.round(Math.log2((file.size || 1) / 65536)));
+    for (let s = 1; s <= steps; s++) {
+      await wait(60);
+      const pct = Math.round((s / steps) * 100);
+      pg.firstElementChild.style.width = pct + '%';
+      st.textContent = pct + '%';
+    }
+    pg.classList.add('ok');
+    st.className = 'sel-status ok';
+    st.textContent = '✓ Pushed';
+  }
+
+  const n = items.length;
+  showMsg('pushMsg', 'success', `${n} file${n !== 1 ? 's' : ''} pushed to ACC › ${target} (demo — no files were actually uploaded).`);
+  document.getElementById('destBadge').textContent = '✓';
+  document.getElementById('destBadge').className = 'step-badge done';
+
+  pushing = false;
+  ['destProject', 'destFolder', 'destSub', 'optVersion'].forEach(id => document.getElementById(id).disabled = false);
+  document.getElementById('pushBtn').disabled = false;
+  document.getElementById('clearSelBtn').style.display = '';
+}
+
+// ── Table interactions ─────────────────────────────────────────────────
+function toggleProject(i) {
+  const body = document.getElementById(`pb-${i}`);
+  const chev = document.getElementById(`chev-${i}`);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  chev?.classList.toggle('open', !open);
+}
+
+function sortTable(tid, col) {
+  const table = document.getElementById(tid);
+  if (!table) return;
+
+  const prev = sortState[tid];
+  const dir  = (prev?.col === col && prev?.dir === 'asc') ? 'desc' : 'asc';
+  sortState[tid] = { col, dir };
+
+  const rows = Array.from(table.querySelectorAll('tbody tr'));
+  rows.sort((a, b) => {
+    const av = a.cells[col].dataset.v ?? a.cells[col].textContent.trim();
+    const bv = b.cells[col].dataset.v ?? b.cells[col].textContent.trim();
+    let cmp;
+    if (col === 3)      cmp = parseFloat(av) - parseFloat(bv);
+    else if (col === 4) cmp = (av ? new Date(av).getTime() : 0) - (bv ? new Date(bv).getTime() : 0);
+    else                cmp = av.toLowerCase().localeCompare(bv.toLowerCase());
+    return dir === 'asc' ? cmp : -cmp;
+  });
+
+  const tbody = table.querySelector('tbody');
+  rows.forEach(r => tbody.appendChild(r));
+
+  table.querySelectorAll('th').forEach((th, i) => {
+    const ic = th.querySelector('.sort-icon');
+    th.classList.toggle('sorted', i === col);
+    if (ic) ic.textContent = i === col ? (dir === 'asc' ? '↑' : '↓') : '↕';
+  });
+}
+
+function filterTable(tid, q, projIdx) {
+  const table = document.getElementById(tid);
+  if (!table) return;
+  const lq = q.toLowerCase();
+  let visible = 0;
+  const allRows = table.querySelectorAll('tbody tr');
+  allRows.forEach(r => {
+    const show = r.textContent.toLowerCase().includes(lq);
+    r.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const tc = document.getElementById(`tc-${projIdx}`);
+  if (tc) tc.textContent = q ? `${visible.toLocaleString()} / ${allRows.length.toLocaleString()} files` : `${allRows.length.toLocaleString()} files`;
+  refreshSelectionUI();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showMsg(id, type, text) {
+  const icons = {
+    success: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:   `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    info:    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+  };
+  document.getElementById(id).innerHTML = `<div class="msg ${type}">${icons[type] || ''}<span>${esc(text)}</span></div>`;
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtSize(b) {
+  if (!b || b === 0) return '—';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0, v = b;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return (i > 0 ? v.toFixed(1) : v) + ' ' + u[i];
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      + ' ' + dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  } catch { return '—'; }
+}
+
+function extColor(ext) {
+  const map = {
+    PDF:  { bg:'#fee2e2', fg:'#b91c1c' },
+    DWG:  { bg:'#dbeafe', fg:'#1e40af' },
+    DXF:  { bg:'#dbeafe', fg:'#1e40af' },
+    RVT:  { bg:'#ede9fe', fg:'#6d28d9' },
+    NWD:  { bg:'#e0e7ff', fg:'#4338ca' },
+    NWC:  { bg:'#e0e7ff', fg:'#4338ca' },
+    IFC:  { bg:'#d1fae5', fg:'#065f46' },
+    DOCX: { bg:'#eff6ff', fg:'#1d4ed8' },
+    DOC:  { bg:'#eff6ff', fg:'#1d4ed8' },
+    XLSX: { bg:'#f0fdf4', fg:'#15803d' },
+    XLS:  { bg:'#f0fdf4', fg:'#15803d' },
+    CSV:  { bg:'#f0fdf4', fg:'#15803d' },
+    PPTX: { bg:'#fff7ed', fg:'#c2410c' },
+    PNG:  { bg:'#fdf4ff', fg:'#9333ea' },
+    JPG:  { bg:'#fdf4ff', fg:'#9333ea' },
+    JPEG: { bg:'#fdf4ff', fg:'#9333ea' },
+    MP4:  { bg:'#fef3c7', fg:'#b45309' },
+    ZIP:  { bg:'#fef9c3', fg:'#92400e' },
+    P6:   { bg:'#ecfeff', fg:'#0e7490' },
+    MPP:  { bg:'#ffe4e6', fg:'#9f1239' }
+  };
+  return map[(ext || '').toUpperCase()] || { bg:'#f1f5f9', fg:'#475569' };
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+populateDestinations();
+renderSelList();
+doSearch();
+</script>
+</body>
+</html>
